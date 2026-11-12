@@ -1,0 +1,31 @@
+# Secrets: only the example may be committed.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+
+# Source schedule files stay local.
+/data/schedule/
+/Расписание*.xlsx
+
+# Dependencies and generated output.
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.log
+/checkpoints/
+
+# Local system/editor files and the unchanged distribution bundle.
+.DS_Store
+.Rhistory
+.idea/
+.vscode/
+/codex-agents-skills-addon/
+/codex-agents-skills-addon.md
