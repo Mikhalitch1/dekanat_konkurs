@@ -11,6 +11,7 @@
 # Source schedule files stay local.
 /data/schedule/
 /Расписание*.xlsx
+/data/local-db/
 
 # Dependencies and generated output.
 node_modules/
