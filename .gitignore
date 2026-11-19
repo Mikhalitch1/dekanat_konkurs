@@ -37,3 +37,6 @@ test-results/
 
 # Contains test account passwords for the submission form.
 /submission-comment.txt
+
+# Large demo video stays out of git (upload to a video host).
+/demo-video/
