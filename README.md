@@ -18,16 +18,26 @@ React + Vite + TypeScript (интерфейс), Node.js + Fastify + zod (API), P
 - СНИЛС и паспортные данные (вымышленные) шифруются в БД (AES-256-GCM), ключ только в окружении сервера; раскрытие фиксируется в журнале доступа.
 - Секреты не хранятся в репозитории: `.env` игнорируется, образец — `.env.example`.
 
-## Локальный запуск
-Нужны Node.js 20.19+ и Docker.
+## Запуск у себя за три команды
+Нужен только **Docker** (Docker Desktop на Mac и Windows или Docker Engine с Compose v2 на Linux). На Windows запускайте из WSL или Git Bash.
 
 ```bash
-npm ci
-npm run setup:local   # создаёт .env со случайными секретами и локальный сертификат
-npm run dev           # docker compose: БД, API, веб и nginx на https://localhost:8443
+git clone https://github.com/Mikhalitch1/dekanat_konkurs.git
+cd dekanat_konkurs
+./start.sh
 ```
 
-Проверки: `npm run lint`, `npm run typecheck`, `npm test`.
+Скрипт сам создаёт секреты (`.env`, в git не попадает) и локальный сертификат, собирает контейнеры (первый запуск 3–6 минут) и печатает адрес **https://localhost:8443** и пароли тестовых аккаунтов (студент, студентка, сотрудник; данные вымышлены). Браузер предупредит о самоподписанном сертификате: «Дополнительно» → «Продолжить».
+
+- Остановить: `docker compose down`; остановить и стереть данные: `docker compose down -v`.
+- Другой порт: `HTTPS_PORT=9443 ./start.sh`.
+- Если порты заняты или нужен Node-путь: `npm ci && npm run setup:local && docker compose up --build`.
+- Проверки для разработчика: `npm run lint`, `npm run typecheck`, `npm test`.
+- Развёртывание на сервере: [deploy/](deploy/) и `docker-compose.prod.yml`.
+
+## Документы для жюри
+- [Описание процесса создания (PDF)](docs/process-description.pdf) · [исходник](docs/process-description.html), скриншоты в [docs/screenshots](docs/screenshots).
+- Журналы работы с ИИ: [PROGRESS](docs/PROGRESS.md), [PROMPTS_LOG](docs/PROMPTS_LOG.md), [ERRORS_LOG](docs/ERRORS_LOG.md), правила для агентов: [AGENTS.md](AGENTS.md).
 
 ## Структура
 - `apps/web` — интерфейс, `apps/api` — API, `db/migrations` — схема БД;

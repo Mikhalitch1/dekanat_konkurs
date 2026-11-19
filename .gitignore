@@ -31,3 +31,6 @@ test-results/
 .vscode/
 /codex-agents-skills-addon/
 /codex-agents-skills-addon.md
+
+# Browser automation output.
+.playwright-mcp/
