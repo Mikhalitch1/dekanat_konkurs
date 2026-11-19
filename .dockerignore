@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.local
+node_modules
+dist
+coverage
+data/local-db
+data/schedule
+*.xlsx
+codex-agents-skills-addon
+codex-agents-skills-addon.md
+.DS_Store

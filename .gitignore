@@ -12,6 +12,7 @@
 /data/schedule/
 /Расписание*.xlsx
 /data/local-db/
+/.local/
 
 # Dependencies and generated output.
 node_modules/

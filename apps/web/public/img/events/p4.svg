@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Дебаты первокурсников">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a1f2b"/><stop offset="1" stop-color="#a14459"/></linearGradient></defs>
+<rect width="800" height="450" fill="url(#g)"/><path d="M360.0 450 L600.0 0" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="20"/><path d="M456.00000000000006 450 L696.0 0" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="20"/><path d="M552.0 450 L792.0 0" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="20"/><path d="M648.0 450 L887.9999999999999 0" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="20"/>
+<text x="56.00000000000001" y="63.00000000000001" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff" fill-opacity="0.85">Клубы</text>
+<text x="56.00000000000001" y="225.0" font-family="Helvetica, Arial, sans-serif" font-size="47" font-weight="700" fill="#ffffff"><tspan x="56.00000000000001" dy="0">Дебаты первокурсников</tspan></text>
+<text x="56.00000000000001" y="418.5" font-family="Helvetica, Arial, sans-serif" font-size="21" fill="#ffffff" fill-opacity="0.8">Прошло</text>
+</svg>

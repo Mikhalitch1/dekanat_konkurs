@@ -1,0 +1,41 @@
+# Прод на небольшом VPS: только БД и API. Статика и HTTPS — на системном nginx (deploy/nginx-dekanat.conf).
+name: dekanat
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dekanat
+      POSTGRES_DB: dekanat
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+    command: ["postgres", "-c", "shared_buffers=32MB", "-c", "max_connections=25", "-c", "work_mem=2MB", "-c", "effective_cache_size=96MB"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    mem_limit: 160m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dekanat -d dekanat"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  api:
+    image: dekanat-api:prod
+    environment:
+      DATABASE_URL: postgres://dekanat:${POSTGRES_PASSWORD}@postgres:5432/dekanat
+      APP_ORIGIN: ${APP_ORIGIN:?Required}
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=160
+      DEMO_PASSWORD_STUDENT_ARTEM: ${DEMO_PASSWORD_STUDENT_ARTEM:?Required}
+      DEMO_PASSWORD_STUDENT_LINA: ${DEMO_PASSWORD_STUDENT_LINA:?Required}
+      DEMO_PASSWORD_STAFF: ${DEMO_PASSWORD_STAFF:?Required}
+      PII_KEY: ${PII_KEY:?Required}
+    ports: ["127.0.0.1:3100:3000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    mem_limit: 300m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+volumes:
+  pgdata:

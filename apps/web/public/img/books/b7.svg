@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420" role="img" aria-label="Python для анализа данных">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0e2a52"/><stop offset="1" stop-color="#1d4f8f"/></linearGradient></defs>
+<rect width="300" height="420" fill="url(#g)"/><rect x="174.0" y="50.4" width="90.0" height="90.0" rx="15.0" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="8" transform="rotate(12 210.0 126.0)"/><path d="M0 357.0 H150.0" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="8"/>
+<text x="21.000000000000004" y="58.800000000000004" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#ffffff" fill-opacity="0.85">Учебник</text>
+<text x="21.000000000000004" y="176.4" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#ffffff"><tspan x="21.000000000000004" dy="0">Python для</tspan><tspan x="21.000000000000004" dy="36.58">анализа данных</tspan></text>
+<text x="21.000000000000004" y="390.6" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#ffffff" fill-opacity="0.8">Цифровой деканат</text>
+</svg>

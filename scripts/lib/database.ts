@@ -1,19 +1,35 @@
-import { PGlite } from '@electric-sql/pglite';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { DEMO_STUDENTS } from '../../config/schedule.js';
 import type { ImportResult } from '../import-schedule/index.js';
+
+/** Structural interface shared by real PostgreSQL and the isolated PGlite tests. */
+export interface Queryable {
+  query<T = Record<string, unknown>>(sql: string, values?: unknown[]): Promise<{ rows: T[] }>;
+  exec(sql: string): Promise<unknown>;
+}
+export interface Database extends Queryable {
+  transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>;
+}
 
 export function studentId(login: string): string {
   const hex = createHash('sha256').update(`demo-student:${login}`).digest('hex');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
-export async function migrate(db: PGlite): Promise<void> {
-  await db.exec(await readFile('db/migrations/000_schedule.sql', 'utf8'));
+export async function migrate(db: Database): Promise<void> {
+  await db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
+  for (const name of (await readdir('db/migrations')).filter((name) => /^\d+_[a-z_]+\.sql$/u.test(name)).sort()) {
+    await db.transaction(async (tx) => {
+      const existing = await tx.query('SELECT name FROM schema_migrations WHERE name=$1', [name]);
+      if (existing.rows.length) return;
+      await tx.exec(await readFile(`db/migrations/${name}`, 'utf8'));
+      await tx.query('INSERT INTO schema_migrations (name) VALUES ($1)', [name]);
+    });
+  }
 }
 
-export async function seedDatabase(db: PGlite, data: ImportResult): Promise<void> {
+export async function seedDatabase(db: Database, data: ImportResult): Promise<void> {
   await migrate(db);
   await db.transaction(async (tx) => {
     for (const g of data.groups) {
@@ -33,13 +49,15 @@ export async function seedDatabase(db: PGlite, data: ImportResult): Promise<void
     for (const student of DEMO_STUDENTS) {
       const g = data.groups.find((g) => g.name === student.group);
       if (!g) throw new Error('В сиде отсутствует обязательная демонстрационная группа');
+      // Import-only accounts cannot log in. seedCore activates them only with ENV passwords.
+      await tx.query("INSERT INTO users (id,login,role,active) VALUES ($1,$2,'student',false) ON CONFLICT (id) DO NOTHING", [studentId(student.login),student.login]);
       await tx.query('INSERT INTO students (user_id,login,full_name,faculty,program,course,group_id,subgroup,language_groups,elective_option) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (user_id) DO UPDATE SET full_name=EXCLUDED.full_name,faculty=EXCLUDED.faculty,program=EXCLUDED.program,course=EXCLUDED.course,group_id=EXCLUDED.group_id,subgroup=EXCLUDED.subgroup,language_groups=EXCLUDED.language_groups,elective_option=EXCLUDED.elective_option', [studentId(student.login),student.login,student.full_name,g.faculty,g.program,g.course,g.id,student.subgroup,[...student.language_groups],student.elective_option]);
     }
   });
 }
 
 /** Внутренняя выборка: этап 1 будет передавать userId только из сессии. */
-export async function studentSchedule(db: PGlite, userId: string) {
+export async function studentSchedule(db: Queryable, userId: string) {
   type StudentEntry = Omit<ImportResult['entries'][number], 'source_text'|'source_sheet'|'source_cell'|'source_merge'>;
   return (await db.query<StudentEntry>(`
     SELECT e.id,e.group_id,e.discipline_id,e.room,e.starts_at,e.ends_at,e.type,
@@ -51,7 +69,7 @@ export async function studentSchedule(db: PGlite, userId: string) {
     ORDER BY e.starts_at,e.id`, [userId])).rows;
 }
 
-export async function databaseSnapshot(db: PGlite): Promise<string> {
+export async function databaseSnapshot(db: Queryable): Promise<string> {
   const rows = await Promise.all(['groups','students','teachers','disciplines','schedule_entries'].map(async (table) => {
     // table is a hard-coded allowlist, never user input.
     return (await db.query(`SELECT * FROM ${table} ORDER BY 1`)).rows;

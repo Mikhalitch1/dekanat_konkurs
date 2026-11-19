@@ -1,13 +1,14 @@
-import { PGlite } from '@electric-sql/pglite';
 import { loadEnvironment } from './lib/files.js';
 import { migrate } from './lib/database.js';
+import { connectPostgres } from './lib/postgres.js';
 
 loadEnvironment();
-const db = new PGlite(process.env.PGLITE_DATA_DIR || './data/local-db');
+let db: Awaited<ReturnType<typeof connectPostgres>> | undefined;
 try {
+  db = await connectPostgres();
   await migrate(db);
-  console.log('Миграция расписания применена.');
+  console.log('Миграции PostgreSQL применены.');
 } catch {
-  console.error('Миграция не выполнена; проверьте локальное хранилище.');
+  console.error('Миграция не выполнена; проверьте DATABASE_URL и доступность PostgreSQL.');
   process.exitCode=1;
-} finally { await db.close(); }
+} finally { if (db) await db.close(); }
