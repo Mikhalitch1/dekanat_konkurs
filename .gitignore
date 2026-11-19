@@ -34,3 +34,6 @@ test-results/
 
 # Browser automation output.
 .playwright-mcp/
+
+# Contains test account passwords for the submission form.
+/submission-comment.txt
