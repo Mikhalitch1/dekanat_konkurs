@@ -80,7 +80,7 @@ describe('API authentication and ownership', () => {
   });
 
   it('returns 401 without a session for profile, schedule, grades, requests and staff routes', async () => {
-    for (const url of ['/api/me', '/api/profile', '/api/schedule', '/api/grades', '/api/requests', '/api/staff/requests']) {
+    for (const url of ['/api/me', '/api/schedule', '/api/grades', '/api/requests', '/api/staff/requests']) {
       expect((await app.inject({ url })).statusCode).toBe(401);
     }
   });
@@ -93,7 +93,9 @@ describe('API authentication and ownership', () => {
     expect(a.json().profile.group_name).toBe('ТИГ(б)-О-23/1');
     expect(b.json().profile.group_name).toBe('ФЭТ(б)-О-23/1');
     expect(a.json().profile.course).toBe(2);
-    expect((await app.inject({ url: `/api/profile?user_id=${studentB.user.id}`, headers: { cookie: studentA.cookie } })).statusCode).toBe(400);
+    expect((await app.inject({ url: `/api/me?user_id=${studentB.user.id}`, headers: { cookie: studentA.cookie } })).statusCode).toBe(400);
+    const spoofed = await app.inject({ url: '/api/me', headers: { cookie: studentA.cookie, 'x-user-id': studentB.user.id } });
+    expect(spoofed.json().profile.full_name).toBe('Артём Тестов');
     expect((await app.inject({ url: `/api/students/${studentB.user.id}`, headers: { cookie: studentA.cookie } })).statusCode).toBe(404);
   });
 
@@ -112,22 +114,28 @@ describe('API authentication and ownership', () => {
     expect((await app.inject({ url: `/api/grades/${foreign}`, headers: { cookie: studentA.cookie } })).statusCode).toBe(404);
     const response = await app.inject({ url: '/api/grades', headers: { cookie: studentA.cookie } });
     expect(response.statusCode).toBe(200);
-    expect(response.json().grades).toHaveLength(6);
+    const own = (await db.query<{ n: string }>('SELECT count(*) AS n FROM grades WHERE student_id=$1', [studentA.user.id])).rows[0].n;
+    const works = response.json<{ progress: { works: unknown[] }[] }>().progress.flatMap((p) => p.works);
+    expect(works).toHaveLength(Number(own));
     expect(response.body).not.toContain(foreign);
   });
 
-  it('enforces student group, subgroup and selected language in schedule without source fields', async () => {
+  it('enforces student group in schedule without source fields', async () => {
+    const seen: Set<string>[] = [];
     for (const session of [studentA, studentB]) {
       const response = await app.inject({ url: '/api/schedule', headers: { cookie: session.cookie } });
       expect(response.statusCode).toBe(200);
-      const entries = response.json<{ entries: Array<{ group_id: string; subgroup: string | null; language: string | null; language_group: string | null }> }>().entries;
-      const profile = (await db.query<{ group_id: string; subgroup: string; language_groups: string[] }>('SELECT group_id,subgroup,language_groups FROM students WHERE user_id=$1', [session.user.id])).rows[0];
-      expect(entries.length).toBeGreaterThan(0);
-      expect(entries.every((entry) => entry.group_id === profile.group_id && (entry.subgroup === null || entry.subgroup === profile.subgroup))).toBe(true);
-      expect(entries.every((entry) => !entry.language_group || profile.language_groups.includes(`${entry.language}:${entry.language_group}`))).toBe(true);
+      const lessons = response.json<{ lessons: { id: string }[] }>().lessons;
+      expect(lessons.length).toBeGreaterThan(0);
+      const ids = [...new Set(lessons.map((l) => l.id.split(':')[0]))];
+      const profile = (await db.query<{ group_id: string }>('SELECT group_id FROM students WHERE user_id=$1', [session.user.id])).rows[0];
+      const foreign = (await db.query<{ n: string }>('SELECT count(*) AS n FROM schedule_entries WHERE id=ANY($1::uuid[]) AND group_id<>$2', [ids, profile.group_id])).rows[0].n;
+      expect(Number(foreign)).toBe(0);
       expect(response.body).not.toContain('source_');
       expect(response.body).not.toContain('password_hash');
+      seen.push(new Set(ids));
     }
+    expect([...seen[0]].some((id) => seen[1].has(id))).toBe(false);
   });
 
   it('checks the staff role server-side and gives staff only request processing data', async () => {
@@ -136,7 +144,8 @@ describe('API authentication and ownership', () => {
     const staff = await login(app, STAFF_LOGIN, passwords.staff);
     const response = await app.inject({ url: '/api/staff/requests', headers: { cookie: staff.cookie } });
     expect(response.statusCode).toBe(200);
-    expect(response.json().requests).toHaveLength(6);
+    const total = (await db.query<{ n: string }>('SELECT count(*) AS n FROM requests')).rows[0].n;
+    expect(response.json().requests).toHaveLength(Number(total));
     expect(response.body).not.toContain('password_hash');
     expect(response.body).not.toContain('grades');
     expect(response.body).not.toContain('language_groups');

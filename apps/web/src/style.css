@@ -304,3 +304,4 @@ a.role-tag{text-decoration:none;color:var(--accent);padding:10px 4px}
 .nav a{font-size:11px}
 @media (min-width:640px){.summary{grid-template-columns:2fr 1fr 1fr 1fr}.stat-lead{grid-column:auto}.events{display:grid;grid-template-columns:1fr 1fr;gap:16px}.events>li{display:flex}.events .eventcard{width:100%;display:flex;flex-direction:column}.events .eventcard .eventfoot{margin-top:auto}}
 .newscard.static{cursor:default}.newscard.static p{margin:4px 0 6px}
+.offline-bar{position:sticky;top:0;z-index:30;margin:0;padding:8px 16px;background:var(--warn-bg);color:var(--warn);font-size:14px;text-align:center}

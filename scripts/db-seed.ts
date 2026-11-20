@@ -10,6 +10,14 @@ try {
   const passwords = readDemoPasswords();
   db = await connectPostgres();
   const database = db;
+  // Повторный старт контейнера не должен стирать заявки и баллы, которые жюри уже внесло: сид идёт только в пустую базу.
+  // Принудительный сброс демо-данных: FORCE_SEED=1 npm run db:seed.
+  const existing = Number((await db.query<{ n: string }>('SELECT count(*) AS n FROM users')).rows[0]?.n ?? 0);
+  if (existing > 0 && process.env.FORCE_SEED !== '1') {
+    console.log(JSON.stringify({seeded:false,reason:'база уже заполнена; FORCE_SEED=1 сбрасывает демо-данные'}));
+    await db.close();
+    process.exit(0);
+  }
   const {data,surnames} = await prepareSeed();
   await seedDatabase(db,data);
   await seedCore(db,passwords);

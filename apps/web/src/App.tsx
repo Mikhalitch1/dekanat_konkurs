@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ApiError, SESSION_EXPIRED, api, setCsrf, type Account } from './api';
+import { ApiError, OFFLINE_DATA, SESSION_EXPIRED, api, clearOfflineData, setCsrf, type Account } from './api';
 import { Icon, Logo, type IconName } from './icons';
 import { RequestScope } from './request-scope';
 import { AssistantScreen, MoreScreen, NotificationsScreen, ProfileScreen, type ThemeMode } from './screens/More';
@@ -41,7 +41,13 @@ function useTheme(): [ThemeMode, (t: ThemeMode) => void] {
 }
 
 function Chrome({ children, nav, active, unread, staff }: { children: ReactNode; nav?: typeof STUDENT_NAV; active?: string; unread?: number; staff?: boolean }) {
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const on = (e: Event) => setOffline((e as CustomEvent<boolean>).detail === true);
+    window.addEventListener(OFFLINE_DATA, on); return () => window.removeEventListener(OFFLINE_DATA, on);
+  }, []);
   return <div className="app">
+    {offline && <p className="offline-bar" role="status">Нет сети: показаны данные, сохранённые на этом устройстве.</p>}
     <header className="topbar">
       <a className="brand" href={staff ? '#/staff/requests' : '#/today'} aria-label="Цифровой деканат — на главную"><Logo size={30} /><span>Цифровой деканат</span></a>
       {nav && !staff && <a className="iconbtn" href="#/notifications" aria-label={unread ? `Уведомления, непрочитанных: ${unread}` : 'Уведомления'}><Icon name="bell" />{unread ? <span className="badge">{unread}</span> : null}</a>}
@@ -125,20 +131,21 @@ export function App() {
   async function boot() {
     setLoading(true); setError('');
     try {
-      setCsrf((await api<{ csrfToken: string }>('/csrf')).csrfToken);
+      try { setCsrf((await api<{ csrfToken: string }>('/csrf')).csrfToken); } catch (e) { if (!(e instanceof ApiError && e.status === 0)) throw e; /* офлайн: токен понадобится только для отправки данных */ }
       try { setAccount(await api<Account>('/me')); } catch (e) { if (!(e instanceof ApiError && e.status === 401)) throw e; }
     } catch { setError('Сервис сейчас недоступен. Проверьте соединение и повторите.'); }
     finally { setLoading(false); }
   }
   useEffect(() => { if (!verify) void boot(); }, []);
   useEffect(() => {
-    const out = () => { setAccount(null); setExpired(true); void api<{ csrfToken: string }>('/csrf').then((t) => setCsrf(t.csrfToken)).catch(() => undefined); };
+    const out = () => { void clearOfflineData(); setAccount(null); setExpired(true); void api<{ csrfToken: string }>('/csrf').then((t) => setCsrf(t.csrfToken)).catch(() => undefined); };
     window.addEventListener(SESSION_EXPIRED, out); return () => window.removeEventListener(SESSION_EXPIRED, out);
   }, []);
 
   async function signIn(login: string, password: string) {
     setBusy(true); setError(''); setExpired(false);
     try {
+      await clearOfflineData();
       const r = await api<{ csrfToken: string }>('/login', { method: 'POST', body: { login, password } });
       setCsrf(r.csrfToken);
       const me = await api<Account>('/me');
@@ -151,6 +158,7 @@ export function App() {
     setBusy(true);
     try {
       await api('/logout', { method: 'POST' });
+      await clearOfflineData();
       if ('caches' in window) await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
       try { sessionStorage.clear(); } catch { /* недоступно */ }
       setAccount(null); window.location.hash = '#/';

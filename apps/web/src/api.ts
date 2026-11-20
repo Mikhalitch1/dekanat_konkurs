@@ -5,10 +5,20 @@ export class ApiError extends Error {
 let csrfToken = '';
 export const setCsrf = (token: string) => { csrfToken = token; };
 export const SESSION_EXPIRED = 'dekanat:session-expired';
+export const OFFLINE_DATA = 'dekanat:offline-data';
+
+/** Стирает офлайн-кэш личных данных: при выходе, входе под другим пользователем и истечении сессии. */
+export async function clearOfflineData(): Promise<void> {
+  try {
+    if ('caches' in window) await Promise.all((await caches.keys()).filter((k) => k.startsWith('dekanat-user')).map((k) => caches.delete(k)));
+    (await navigator.serviceWorker?.getRegistration())?.active?.postMessage('clear-user-data');
+  } catch { /* кэш недоступен */ }
+}
 
 export async function api<T>(path: string, options: { method?: 'GET' | 'POST'; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
   const method = options.method ?? 'GET';
   const headers: Record<string, string> = {};
+  if (method === 'POST' && !csrfToken && path !== '/csrf') csrfToken = (await api<{ csrfToken: string }>('/csrf')).csrfToken;
   if (method === 'POST') { headers['Content-Type'] = 'application/json'; headers['X-CSRF-Token'] = csrfToken; }
   let response: Response;
   try {
@@ -22,6 +32,7 @@ export async function api<T>(path: string, options: { method?: 'GET' | 'POST'; b
     if (response.status === 401 && !['/login', '/verify', '/me', '/csrf'].some((p) => path.startsWith(p))) window.dispatchEvent(new Event(SESSION_EXPIRED));
     throw new ApiError(data?.error ?? 'Не удалось выполнить запрос. Повторите попытку.', response.status);
   }
+  window.dispatchEvent(new CustomEvent(OFFLINE_DATA, { detail: response.headers.get('X-From-Offline-Cache') === '1' }));
   return response.status === 204 ? undefined as T : await response.json() as T;
 }
 
