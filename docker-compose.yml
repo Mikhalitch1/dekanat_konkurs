@@ -26,6 +26,12 @@ services:
       DEMO_PASSWORD_STUDENT_LINA: ${DEMO_PASSWORD_STUDENT_LINA:?Required}
       DEMO_PASSWORD_STAFF: ${DEMO_PASSWORD_STAFF:?Required}
       PII_KEY: ${PII_KEY:?Run npm run setup:local}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      GIGACHAT_CREDENTIALS: ${GIGACHAT_CREDENTIALS:-}
+      GIGACHAT_SCOPE: ${GIGACHAT_SCOPE:-}
+      GIGACHAT_MODEL: ${GIGACHAT_MODEL:-}
+      AI_SITE_REQUEST_LIMIT: ${AI_SITE_REQUEST_LIMIT:-}
     depends_on:
       postgres: {condition: service_healthy}
     healthcheck:
