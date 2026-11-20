@@ -105,17 +105,9 @@ async function complete(env: Env, messages: ChatMessage[], signal: AbortSignal):
   return null;
 }
 
-/** Лимит обращений к модели на студента в сутки (защита квоты ключа); дальше работает режим по правилам. */
-const usage = new Map<string, number>();
-export function withinQuota(userId: string, day: string, env: Env = process.env): boolean {
-  const limit = Number(env.AI_SITE_REQUEST_LIMIT);
-  if (!Number.isFinite(limit) || limit <= 0) return true;
-  for (const key of usage.keys()) if (!key.endsWith(`|${day}`)) usage.delete(key);
-  const key = `${userId}|${day}`;
-  const used = usage.get(key) ?? 0;
-  if (used >= limit) return false;
-  usage.set(key, used + 1);
-  return true;
+/** Убирает служебные фразы про действия, если модель всё же написала их в тексте. */
+export function cleanReply(text: string): string {
+  return text.split(/(?<=[.!?])\s+/u).filter((part) => !/create_request|\bopen\b|\baction\b|действие\s/iu.test(part)).join(' ').trim();
 }
 
 export async function askModel(ctx: AssistantContext, message: string, history: HistoryItem[], env: Env = process.env): Promise<AssistantReply | null> {
@@ -134,7 +126,7 @@ export async function askModel(ctx: AssistantContext, message: string, history: 
     if (!parsed.success) return null;
     const proposed = parsed.data.action;
     const action = proposed?.type === 'create_request' && !ctx.requestTypes.some((t) => t.code === proposed.code) ? null : proposed;
-    return { reply: parsed.data.reply, action, source: 'model' };
+    return { reply: cleanReply(parsed.data.reply) || 'Готово, смотри подсказку ниже.', action, source: 'model' };
   } catch {
     return null;
   } finally { clearTimeout(timer); }

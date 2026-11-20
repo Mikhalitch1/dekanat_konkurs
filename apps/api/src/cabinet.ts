@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { studentSchedule, type Database, type Queryable } from '../../../scripts/lib/database.js';
 import { certificateCode } from '../../../scripts/lib/seed-core.js';
 import { moscowDate, moscowMonday, occurrences } from '../../../scripts/lib/timeline.js';
-import { askModel, localAnswer, withinQuota, type AssistantContext } from './assistant.js';
+import { askModel, localAnswer, type AssistantContext } from './assistant.js';
 import { NEWS_IMAGES, extraPoints, registerExtras } from './extras.js';
 
 interface Session { user_id: string | null; role: 'student' | 'staff' | null }
@@ -234,7 +234,7 @@ export async function registerCabinet(app: FastifyInstance, db: Database, h: Hel
     const session = await h.student(request);
     const { message, history } = askBody.parse(request.body);
     const ctx = await assistantContext(db, session.user_id!, h.clock());
-    return (withinQuota(session.user_id!, ctx.today) ? await askModel(ctx, message, history) : null) ?? localAnswer(ctx, message);
+    return (await askModel(ctx, message, history)) ?? localAnswer(ctx, message);
   });
 
   // ——— Кабинет сотрудника ———
